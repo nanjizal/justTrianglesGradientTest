@@ -36,6 +36,7 @@ abstract RainbowColors( Int ) to Int from Int {
 }
 class Test {
     var rainbow = [ Black, Red, Orange, Yellow, Green, Blue, Indigo, Violet ];
+    // simple shaders used for creating gradient textures out of triangles that have one side different color.
     public static inline var vertexString0: String =
         'attribute vec3 pos;' +
         'attribute vec4 color;' +
@@ -54,6 +55,7 @@ class Test {
             ' gl_FragColor = vcol;' +
         '}';
     
+    // Slightly more complex shaders for putting a texture on triangles drawn from svg drawing commands. 
     public static inline var vertexString: String =
         'attribute vec3 pos;' +
         'attribute vec2 aTexture;' +
@@ -104,7 +106,7 @@ class Test {
     var modelViewProjection = Matrix4.identity(); // external matrix controlling global 3d position
     var matrix32Array = new Float32Array( ident() ); // internal matrix passed to shader
     //
-    var image: Image;
+    var image: Image; // <- remove
     var colors = new Array<Float>();
     public static var texture: Texture;
     public static var framebuffer: Framebuffer;
@@ -114,10 +116,9 @@ class Test {
         // 'using' allows us to put gl in front of the function making the code more descriptive
         program0 = gl.createShaderProgram( gl.vertex( vertexString0 ), gl.fragment( fragmentString0 ) );
         program1 = gl.createShaderProgram( gl.vertex( vertexString ), gl.fragment( fragmentString ) );
-        //loadImage( HaxeLogo.gif ); // MUST BE SAME DOMAIN!!!
         render();
     }
-    
+    // Parses Svg path of Kiwi bird into triangles and then draws a grid so we can see what gradients are doing.
     function drawVectorOutlines(){
         var thick = 4;
         var ctx = new PathContext( 1, 1000, 1, 1 );
@@ -181,6 +182,8 @@ class Test {
         gl.compileShader( shader );
         return shader;
     }
+    // used to draw gradients on screen you can see there is a color per triangle corner.  
+    // JustTriangle needs colorID to be factored out later.
     function createTriangleColors( triangles: Array<Triangle> ) {
         var tri: Triangle;
         var count = 0;
@@ -233,6 +236,8 @@ class Test {
         gl.passIndicesToShader( indices ); // indices data 
         gl.passAttributeToShader( program0, 'color', 4, colors ); // color data
     }
+    // Using texture is a bit dirty think it may relate to absolute canvas sizes 
+    // code is used to map texture and triangles on screen.
     function creatingTriangles( triangles: Array<Triangle> ){
         var tri: Triangle;
         var count = 0;
@@ -316,10 +321,14 @@ class Test {
     var col = [ 3,1,3,4,1,6,7,3 ];
     var col2 = [ 1,0 ];
     function render(){
+        // Draw Gradients on texture
         gl.bindFramebuffer( RenderingContext.FRAMEBUFFER, null );
         gl.useProgram( program0 );
+        // maps a gradient to a set of triangles 
         TriangleGradient.multiGradient( 10, true, -1., -1., 2., 2., col, -Math.PI/8, 0.5, 0.5 );
         TriangleGradient.multiGradient( 10, true, -1., -1., 2., 2., col, Math.PI/8, -0.5, -0.5 );
+        // pathcontext pt command might be possible to help match position of drawing with gradient textures
+        // still thought required in terms of textures.
         var scale = 500;
         var ctx = new PathContext( 1, scale, 1, 1 );
         var p00 = ctx.pt( 0.1*scale*3, 0.1*scale*3 );
@@ -328,11 +337,14 @@ class Test {
         var top = p00.y - 0.5;
         var wid = p01.x - p00.x - 0.5;
         var hi = p01.y - p00.y - 0.5;
+        // these are the two small gradients on the screen the red/black ones.
         TriangleGradient.multiGradient( 10, true, left, top, wid, hi, col2 );
+        // can see that pivotY requires to be negative... not ideal
         TriangleGradient.multiGradient( 10, true, left, top, wid, hi, col2, -Math.PI/4, left + wid/2, -top - hi/2 );
         setTriangleColors( Triangle.triangles );
         textureTest( program0, gl );
         drawing( program0, canvas.width, canvas.height );
+        // Draw svg and drawing commands and use gradient texture.
         Triangle.triangles = [];
         gl.bindFramebuffer( RenderingContext.FRAMEBUFFER, null );
         indices = [];
